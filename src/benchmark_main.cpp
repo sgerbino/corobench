@@ -1,12 +1,12 @@
 #include <benchmark/benchmark.h>
-#include <callback_async.hpp>
-#include <coroutine_async.hpp>
+#include <callback.hpp>
+#include <coroutine.hpp>
 #include <coroutine_optimized.hpp>
 
 // Only include elidable benchmarks if the decorator is actually being used
 #if defined(__clang__) && !defined(__apple_build_version__)
 #define ENABLE_ELIDABLE_BENCHMARKS
-#include <coroutine_elidable.hpp>
+#include <coroutine_optimized_elidable.hpp>
 #endif
 
 // ============================================================================
@@ -42,14 +42,14 @@ static void BM_Simple_CoroOptimized(benchmark::State &state) {
 BENCHMARK(BM_Simple_CoroOptimized);
 
 #ifdef ENABLE_ELIDABLE_BENCHMARKS
-static void BM_Simple_CoroElidable(benchmark::State &state) {
+static void BM_Simple_CoroOptElidable(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro_elidable::async_compute(1000);
+    auto task = async_coro_opt_elidable::async_compute(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Simple_CoroElidable);
+BENCHMARK(BM_Simple_CoroOptElidable);
 #endif
 
 // ============================================================================
@@ -85,14 +85,14 @@ static void BM_Chain_CoroOptimized(benchmark::State &state) {
 BENCHMARK(BM_Chain_CoroOptimized);
 
 #ifdef ENABLE_ELIDABLE_BENCHMARKS
-static void BM_Chain_CoroElidable(benchmark::State &state) {
+static void BM_Chain_CoroOptElidable(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro_elidable::async_chain(1000);
+    auto task = async_coro_opt_elidable::async_chain(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Chain_CoroElidable);
+BENCHMARK(BM_Chain_CoroOptElidable);
 #endif
 
 // ============================================================================
@@ -128,14 +128,14 @@ static void BM_ComplexChain_CoroOptimized(benchmark::State &state) {
 BENCHMARK(BM_ComplexChain_CoroOptimized);
 
 #ifdef ENABLE_ELIDABLE_BENCHMARKS
-static void BM_ComplexChain_CoroElidable(benchmark::State &state) {
+static void BM_ComplexChain_CoroOptElidable(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro_elidable::async_complex_chain(1000);
+    auto task = async_coro_opt_elidable::async_complex_chain(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_ComplexChain_CoroElidable);
+BENCHMARK(BM_ComplexChain_CoroOptElidable);
 #endif
 
 // ============================================================================
@@ -174,15 +174,15 @@ static void BM_VaryingLoad_CoroOptimized(benchmark::State &state) {
 BENCHMARK(BM_VaryingLoad_CoroOptimized)->Range(8, 8 << 10);
 
 #ifdef ENABLE_ELIDABLE_BENCHMARKS
-static void BM_VaryingLoad_CoroElidable(benchmark::State &state) {
+static void BM_VaryingLoad_CoroOptElidable(benchmark::State &state) {
   int workload = state.range(0);
   for (auto _ : state) {
-    auto task = async_coro_elidable::async_compute(workload);
+    auto task = async_coro_opt_elidable::async_compute(workload);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_VaryingLoad_CoroElidable)->Range(8, 8 << 10);
+BENCHMARK(BM_VaryingLoad_CoroOptElidable)->Range(8, 8 << 10);
 #endif
 
 BENCHMARK_MAIN();

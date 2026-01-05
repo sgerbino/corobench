@@ -2,7 +2,7 @@
 
 #include <coroutine>
 
-namespace async_coro_elidable {
+namespace async_coro_opt_elidable {
 
 // Task class decorated with coro_await_elidable
 template <typename T> class [[clang::coro_await_elidable]] task {
@@ -99,4 +99,4 @@ task<int> async_complex_chain(int x) {
   return async_complex_chain_inner(async_compute(x));
 }
 
-} // namespace async_coro_elidable
+} // namespace async_coro_opt_elidable
