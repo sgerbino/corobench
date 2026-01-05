@@ -1,12 +1,11 @@
 #pragma once
 
-#include "attributes.hpp"
 #include <coroutine>
 
 namespace async_coro_elidable {
 
 // Task class decorated with coro_await_elidable
-template <typename T> class CORO_AWAIT_ELIDABLE task {
+template <typename T> class [[clang::coro_await_elidable]] task {
 public:
   struct promise_type {
     T value;
@@ -50,7 +49,7 @@ public:
   T get() noexcept { return handle.promise().value; }
 
   // Simple awaiter (attribute is on the Task class itself)
-  struct Awaiter {
+  struct awaiter {
     std::coroutine_handle<promise_type> handle;
 
     bool await_ready() const noexcept { return handle.done(); }
@@ -60,7 +59,7 @@ public:
     T await_resume() noexcept { return handle.promise().value; }
   };
 
-  Awaiter operator co_await() noexcept { return Awaiter{handle}; }
+  awaiter operator co_await() noexcept { return awaiter{handle}; }
 
 private:
   std::coroutine_handle<promise_type> handle;
@@ -77,7 +76,7 @@ task<int> async_compute(int x) {
 }
 
 // Chain using co_await with elidable Task class and elidable argument
-task<int> async_chain(CORO_AWAIT_ELIDABLE_ARGUMENT task<int> task1) {
+task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
   int val1 = co_await task1;
   int val2 = co_await async_compute(val1 % 100);
   co_return val1 + val2;
@@ -87,8 +86,8 @@ task<int> async_chain(CORO_AWAIT_ELIDABLE_ARGUMENT task<int> task1) {
 task<int> async_chain(int x) { return async_chain(async_compute(x)); }
 
 // Complex chain with elidable arguments
-task<int>
-async_complex_chain_inner(CORO_AWAIT_ELIDABLE_ARGUMENT task<int> task1) {
+task<int> async_complex_chain_inner(
+    [[clang::coro_await_elidable_argument]] task<int> task1) {
   int v1 = co_await task1;
   int v2 = co_await async_compute(v1 % 100);
   int v3 = co_await async_compute(v2 % 50);

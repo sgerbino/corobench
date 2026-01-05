@@ -1,6 +1,5 @@
 #pragma once
 
-#include <attributes.hpp>
 #include <coroutine>
 #include <optional>
 #include <stdexcept>
@@ -69,12 +68,10 @@ public:
   bool done() const { return handle && handle.done(); }
 
   // Awaiter for co_await support
-  struct Awaiter {
+  struct awaiter {
     std::coroutine_handle<promise_type> handle;
 
-    bool await_ready() const noexcept {
-      return handle.done();
-    }
+    bool await_ready() const noexcept { return handle.done(); }
 
     void await_suspend(std::coroutine_handle<>) noexcept {}
 
@@ -96,9 +93,7 @@ public:
     }
   };
 
-  Awaiter operator co_await() noexcept {
-    return Awaiter{handle};
-  }
+  awaiter operator co_await() noexcept { return awaiter{handle}; }
 
 private:
   std::coroutine_handle<promise_type> handle;

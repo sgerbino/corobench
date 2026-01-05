@@ -2,7 +2,6 @@
 #include <callback_async.hpp>
 #include <coroutine_async.hpp>
 #include <coroutine_optimized.hpp>
-#include <attributes.hpp>
 
 // Only include elidable benchmarks if the decorator is actually being used
 #if defined(__clang__) && !defined(__apple_build_version__)

@@ -1,19 +1,19 @@
 #pragma once
 
 #include <functional>
-#include <stdexcept>
 
 namespace async_callback {
 
 template <typename T> using Callback = std::function<void(T)>;
 
 // Simple callback-based async computation examples
-// Use volatile to prevent optimization and make computation depend on actual work
+// Use volatile to prevent optimization and make computation depend on actual
+// work
 template <typename T> void async_compute(int x, Callback<T> callback) {
   volatile T result = 0;
   // Perform actual computation that can't be constant-folded
   for (int i = 0; i < x; i = i + 1) {
-    volatile T temp = i * 31 + (i & 1);  // Non-trivial computation
+    volatile T temp = i * 31 + (i & 1); // Non-trivial computation
     result += temp;
   }
   callback(static_cast<T>(result));

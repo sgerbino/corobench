@@ -1,6 +1,6 @@
 # corobench - Coroutines vs Callbacks Performance Comparison
 
-A C++26 project that benchmarks the performance of C++20 coroutines against traditional callback-based async patterns using Google Benchmark. This project explores multiple coroutine optimization strategies and provides comprehensive performance comparisons.
+A C++20 project that benchmarks the performance of C++20 coroutines against traditional callback-based async patterns using Google Benchmark. This project explores multiple coroutine optimization strategies and provides comprehensive performance comparisons.
 
 ## Project Structure
 
@@ -12,17 +12,17 @@ corobench/
 │   ├── callback_async.hpp          # Callback-based async implementation
 │   ├── coroutine_async.hpp         # Standard coroutine (with safety features)
 │   ├── coroutine_optimized.hpp     # Optimized coroutine (minimal overhead)
-│   ├── coroutine_elidable.hpp      # Awaiter-decorated elidable coroutine
-│   └── coroutine_elidable_task.hpp # task-decorated elidable coroutine
+│   └── coroutine_elidable.hpp      # Elidable coroutine with [[clang::coro_await_elidable]]
 └── src/
     └── benchmark_main.cpp          # Comprehensive benchmark suite
 ```
 
 ## Requirements
 
-- C++26 compatible compiler (GCC 14+, Clang 18+, or MSVC 2022+)
+- C++20 compatible compiler (GCC 14+, Clang 18+, or MSVC 2022+)
 - CMake 3.25 or higher
 - Internet connection (for fetching Google Benchmark)
+- For elidable benchmarks: Non-Apple Clang compiler
 
 ## Building
 
@@ -79,8 +79,7 @@ All coroutine implementations use `co_await` for proper async composition in cha
 | **Callback** | N/A | Nested lambdas | None | Baseline comparison |
 | **Coroutine** | Full safety (exception + optional) | `co_await` | None | Production code needing safety |
 | **CoroOptimized** | Minimal (direct value) | `co_await` | None | Performance-critical code |
-| **CoroElidable** | Minimal | `co_await` | `[[coro_await_elidable]]` on Awaiter | Compiler optimization (Awaiter) |
-| **CoroElidableTask** | Minimal | `co_await` | `[[coro_await_elidable]]` on task | Compiler optimization (task) |
+| **CoroElidable** | Minimal | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters | Compiler heap allocation elision (Clang only) |
 
 ### Key Differences
 
@@ -104,16 +103,44 @@ All coroutine implementations use `co_await` for proper async composition in cha
 
 **CoroElidable (coroutine_elidable.hpp)**
 - Minimal promise type like CoroOptimized
-- `[[clang::coro_await_elidable]]` on Awaiter struct
+- `[[clang::coro_await_elidable]]` on task class (class attribute)
 - `[[clang::coro_await_elidable_argument]]` on function parameters
-- Allows compiler to elide unnecessary suspensions
-- Excellent for simple operations
+- Allows compiler to perform heap allocation elision
+- Only enabled on non-Apple Clang compilers
+- Provides hints for aggressive heap allocation elision at call sites
 
-**CoroElidableTask (coroutine_elidable_task.hpp)**
-- Minimal promise type like CoroOptimized
-- `[[clang::coro_await_elidable]]` on task class itself
-- Alternative attribute placement strategy
-- Semantically declares the entire type as elidable
+## Compiler Attributes
+
+### `[[clang::coro_await_elidable]]`
+
+This is a **class attribute** applied to the coroutine return type (the `task` class). It provides a hint to the compiler to apply heap allocation elision more aggressively.
+
+The compiler performs heap allocation elision on call expressions under a safe elide context. Such elision replaces the heap-allocated activation frame of the callee coroutine with a local variable within the enclosing braces in the caller's stack frame.
+
+Example from `coroutine_elidable.hpp`:
+```cpp
+template <typename T> class [[clang::coro_await_elidable]] task { ... };
+```
+
+### `[[clang::coro_await_elidable_argument]]`
+
+This is a **function parameter attribute** that propagates safe elide context to arguments if the function is also under a safe elide context.
+
+Example from `coroutine_elidable.hpp`:
+```cpp
+task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
+  int val1 = co_await task1;
+  // ...
+}
+```
+
+### Platform Support
+
+The elidable benchmarks are conditionally compiled based on compiler support:
+- **Enabled**: Non-Apple Clang (Clang on Linux, Windows)
+- **Disabled**: Apple Clang, GCC, MSVC
+
+When building with unsupported compilers, the elidable benchmarks are excluded from compilation using preprocessor guards.
 
 ## Benchmark Organization
 
@@ -131,74 +158,16 @@ Testing callback pyramid vs coroutine composition (`async_complex_chain`).
 ### 4. Varying Workloads
 Performance scaling from 8 to 8192 iterations.
 
-## Performance Results
-
-Based on benchmark results (3-run average, Clang compiler):
-
-### Simple Operations (1000 iterations)
-
-| Implementation | Time (ns) | vs Callback | Notes |
-|----------------|-----------|-------------|-------|
-| Callback | 1,176 | baseline | - |
-| Coroutine | 1,240 | +5.4% | Full safety overhead |
-| CoroOptimized | 1,171 | -0.4% | Matches callbacks ⚡ |
-| **CoroElidable** | **1,158** | **-1.5%** | **Fastest** ⚡⚡ |
-| CoroElidableTask | 1,175 | -0.1% | Alternative placement |
-
-### Two-Level Chains
-
-| Implementation | Time (ns) | vs Callback | Notes |
-|----------------|-----------|-------------|-------|
-| Callback | 1,376 | baseline | - |
-| Coroutine | 1,316 | -4.4% | Better than callbacks ⚡ |
-| CoroOptimized | 1,312 | -4.7% | Competitive |
-| **CoroElidable** | **1,300** | **-5.5%** | **Fastest** ⚡⚡ |
-| CoroElidableTask | 1,306 | -5.1% | Close second |
-
-### Three-Level Complex Chains
-
-| Implementation | Time (ns) | vs Callback | Notes |
-|----------------|-----------|-------------|-------|
-| Callback | 1,404 | baseline | Callback pyramid |
-| Coroutine | 1,329 | -5.3% | Clean code wins ⚡ |
-| **CoroOptimized** | **1,299** | **-7.5%** | **Fastest** ⚡⚡ |
-| CoroElidable | 1,353 | -3.6% | Good performance |
-| CoroElidableTask | 1,372 | -2.3% | Competitive |
-
-## Key Conclusions
-
-### 1. **Coroutines Can Beat Callbacks**
-With proper `co_await` composition (not `.get()`), coroutines achieve 4-7% better performance than callbacks in chained operations. This is the realistic use case for async code.
-
-### 2. **Elidable Attributes Are Effective**
-`[[clang::coro_await_elidable]]` provides measurable performance gains, especially for simple operations where CoroElidable beats even callbacks by 1.5%.
-
-### 3. **Safety Has Minimal Cost**
-The standard Coroutine implementation (with full exception safety) is only 5.4% slower than callbacks for simple operations, but actually outperforms callbacks (-4.4% to -5.3%) in chained scenarios.
-
-### 4. **Complexity Favors Coroutines**
-As async operations are chained together:
-- Callbacks show the "pyramid of doom" pattern
-- Coroutines maintain clean, sequential code
-- Performance gap widens in favor of coroutines (up to 7.5% faster)
-
-### 5. **Attribute Placement Matters**
-- **Awaiter decoration** (`CoroElidable`): Best for simple ops and chains
-- **task decoration** (`CoroElidableTask`): Semantically cleaner, slightly less optimization
-- Both are valid; choose based on API design preferences
-
-### 6. **Use `co_await`, Not `.get()`**
-All implementations now use `co_await` for composition. Previously, using `.get()` blocked the coroutine benefits. Proper `co_await` usage is essential for realistic benchmarks.
-
 ## Optimization Techniques Used
 
-The optimized coroutine implementation demonstrates several techniques:
+The optimized coroutine implementations demonstrate several techniques:
 
 1. **Removed Exception Overhead**: No `std::exception_ptr` storage
 2. **Direct Value Storage**: No `std::optional<T>` wrapper
 3. **Noexcept Annotations**: Helps compiler optimize away checks
 4. **Simplified Promise Type**: Minimal state in promise_type
 5. **Eager Execution**: Uses `suspend_never` for initial_suspend
+6. **Compiler Attributes** (CoroElidable only): Hints for heap allocation elision
 
 These optimizations are fair because:
 - The computation work is identical across all implementations
@@ -236,54 +205,82 @@ BENCHMARK(BM_YourTest_Callback);
 static void BM_YourTest_CoroOptimized(benchmark::State& state) {
     for (auto _ : state) {
         auto task = async_coro_opt::your_function();
-        int result = task.get();
-        benchmark::DoNotOptimize(result);
+        // Use the task result
+        benchmark::DoNotOptimize(task);
     }
 }
 BENCHMARK(BM_YourTest_CoroOptimized);
+
+#ifdef ENABLE_ELIDABLE_BENCHMARKS
+static void BM_YourTest_CoroElidable(benchmark::State& state) {
+    for (auto _ : state) {
+        auto task = async_coro_elidable::your_function();
+        // Use the task result
+        benchmark::DoNotOptimize(task);
+    }
+}
+BENCHMARK(BM_YourTest_CoroElidable);
+#endif
 ```
 
 ## Practical Recommendations
 
-Based on the benchmark results, here's when to use each approach:
+Based on typical benchmark results:
 
 ### Use Callbacks When:
-- ❌ **Generally not recommended** - coroutines outperform in realistic scenarios
+- ❌ **Generally not recommended** - coroutines often outperform in realistic scenarios
 - Interfacing with C APIs that require function pointers
 - Working in pre-C++20 codebases
 
 ### Use Standard Coroutines (Coroutine) When:
 - ✅ **Production code requiring safety** - exception handling and error propagation
 - You value correctness over maximum performance
-- 5% overhead is acceptable for peace of mind
-- **Still faster than callbacks in chained operations!** (-4.4% to -5.3%)
+- You need proper error propagation through async chains
+- The small overhead is acceptable for peace of mind
 
 ### Use Optimized Coroutines (CoroOptimized) When:
 - ✅ **Best balance of performance and clean code**
 - Complex async workflows (multiple levels of chaining)
 - You handle errors at a higher level (outside the async layer)
-- **7.5% faster than callbacks in complex chains**
+- You want predictable performance across all compilers
 
 ### Use Elidable Coroutines (CoroElidable) When:
-- ✅ **Maximum performance with Clang**
-- Simple to medium complexity operations
-- You want compiler-assisted optimization
-- **1.5% faster than callbacks even in simple operations**
-- **5.5% faster in chains**
-
-### Use task-Decorated Elidable (CoroElidableTask) When:
-- ✅ **Semantically cleaner API design**
-- You want the entire task type marked as elidable
-- Prefer declarative over implementation-specific attributes
-- **Still competitive with all other approaches**
+- ✅ **Maximum performance with non-Apple Clang**
+- You're using a supported compiler (Linux/Windows Clang)
+- You want compiler-assisted heap allocation elision
+- Performance is critical and you can rely on Clang-specific features
 
 ## General Guidelines
 
-1. **Default to CoroOptimized or CoroElidable** for new projects
-2. **Use Standard Coroutine** when safety is paramount
-3. **Avoid callbacks** unless interfacing with legacy C code
-4. **Always use `co_await`** for composition, never `.get()` in chains
-5. **Benchmark your specific use case** - results vary by workload
+1. **Default to CoroOptimized** for new projects (best portability)
+2. **Use CoroElidable** when targeting Clang specifically for maximum performance
+3. **Use Standard Coroutine** when safety is paramount
+4. **Avoid callbacks** unless interfacing with legacy C code
+5. **Always use `co_await`** for composition in async chains
+6. **Benchmark your specific use case** - results vary by workload
+
+## Key Takeaways
+
+### 1. **Coroutines Can Beat Callbacks**
+With proper `co_await` composition, coroutines can achieve better performance than callbacks in chained operations. This is the realistic use case for async code.
+
+### 2. **Elidable Attributes Can Help**
+`[[clang::coro_await_elidable]]` provides compiler hints for heap allocation elision, potentially improving performance when using supported compilers.
+
+### 3. **Safety Has Minimal Cost**
+The standard Coroutine implementation (with full exception safety) has modest overhead for simple operations, but can be competitive in chained scenarios.
+
+### 4. **Complexity Favors Coroutines**
+As async operations are chained together:
+- Callbacks show the "pyramid of doom" pattern
+- Coroutines maintain clean, sequential code
+- Code readability improves dramatically with coroutines
+
+### 5. **Proper Composition Matters**
+All implementations use `co_await` for composition in async chains. Proper `co_await` usage is essential for realistic async code and accurate benchmarks.
+
+### 6. **Compiler Support Matters**
+The elidable attributes are Clang-specific and not supported on Apple Clang. Design your code to gracefully handle different compiler capabilities using preprocessor guards.
 
 ## License
 

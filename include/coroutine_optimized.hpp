@@ -1,12 +1,11 @@
 #pragma once
 
-#include <attributes.hpp>
 #include <coroutine>
 
 namespace async_coro_opt {
 
 // Optimized Task with minimal overhead
-template <typename T> class CORO_AWAIT_ELIDABLE task {
+template <typename T> class task {
 public:
   struct promise_type {
     T value;
@@ -57,23 +56,17 @@ public:
   bool done() const noexcept { return handle && handle.done(); }
 
   // Awaiter for co_await support
-  struct Awaiter {
+  struct awaiter {
     std::coroutine_handle<promise_type> handle;
 
-    bool await_ready() const noexcept {
-      return handle.done();
-    }
+    bool await_ready() const noexcept { return handle.done(); }
 
     void await_suspend(std::coroutine_handle<>) noexcept {}
 
-    T await_resume() noexcept {
-      return handle.promise().value;
-    }
+    T await_resume() noexcept { return handle.promise().value; }
   };
 
-  Awaiter operator co_await() noexcept {
-    return Awaiter{handle};
-  }
+  awaiter operator co_await() noexcept { return awaiter{handle}; }
 
 private:
   std::coroutine_handle<promise_type> handle;
