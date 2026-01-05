@@ -7,7 +7,7 @@
 
 namespace async_coro {
 
-template <typename T> class CORO_AWAIT_ELIDABLE task {
+template <typename T> class task {
 public:
   struct promise_type {
     std::optional<T> value;
@@ -68,6 +68,38 @@ public:
 
   bool done() const { return handle && handle.done(); }
 
+  // Awaiter for co_await support
+  struct Awaiter {
+    std::coroutine_handle<promise_type> handle;
+
+    bool await_ready() const noexcept {
+      return handle.done();
+    }
+
+    void await_suspend(std::coroutine_handle<>) noexcept {}
+
+    T await_resume() {
+      if (!handle) {
+        throw std::runtime_error("Invalid coroutine handle");
+      }
+
+      auto &promise = handle.promise();
+      if (promise.exception) {
+        std::rethrow_exception(promise.exception);
+      }
+
+      if (!promise.value) {
+        throw std::runtime_error("No value available");
+      }
+
+      return *promise.value;
+    }
+  };
+
+  Awaiter operator co_await() noexcept {
+    return Awaiter{handle};
+  }
+
 private:
   std::coroutine_handle<promise_type> handle;
 };
@@ -86,25 +118,15 @@ task<int> async_compute(int x) {
 }
 
 task<int> async_chain(int x) {
-  auto result1 = async_compute(x);
-  int val1 = result1.get();
-
-  auto result2 = async_compute(val1 % 100);
-  int val2 = result2.get();
-
+  int val1 = co_await async_compute(x);
+  int val2 = co_await async_compute(val1 % 100);
   co_return val1 + val2;
 }
 
 task<int> async_complex_chain(int x) {
-  auto r1 = async_compute(x);
-  int v1 = r1.get();
-
-  auto r2 = async_compute(v1 % 100);
-  int v2 = r2.get();
-
-  auto r3 = async_compute(v2 % 50);
-  int v3 = r3.get();
-
+  int v1 = co_await async_compute(x);
+  int v2 = co_await async_compute(v1 % 100);
+  int v3 = co_await async_compute(v2 % 50);
   co_return v1 + v2 + v3;
 }
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.25)
-project(asyncbench CXX)
+project(corobench CXX)
 
 set(CMAKE_CXX_STANDARD 26)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -25,16 +25,16 @@ set(BENCHMARK_ENABLE_GTEST_TESTS OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(benchmark)
 
 # Add the benchmark executable
-add_executable(asyncbench
+add_executable(corobench
     src/benchmark_main.cpp
 )
 
-target_link_libraries(asyncbench
+target_link_libraries(corobench
     PRIVATE
     benchmark::benchmark
 )
 
-target_include_directories(asyncbench
+target_include_directories(corobench
     PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
 )
