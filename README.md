@@ -82,7 +82,7 @@ All coroutine implementations use `co_await` for proper async composition in cha
 | **Callback** | N/A | Nested lambdas | None | Baseline comparison |
 | **Coroutine** | Full safety (exception + optional) | `co_await` | None | Production code needing safety |
 | **CoroOptimized** | Minimal (direct value) | `co_await` | None | Performance-critical code |
-| **CoroElidable** | Full safety (exception + optional) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters | Standard coroutine with elision hints (Clang only) |
+| **CoroElidable** | Full safety (exception + optional) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters, `[[coro_wrapper]]` on wrapper functions | Standard coroutine with elision hints (Clang only) |
 | **CoroOptElidable** | Minimal (direct value) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters, `[[coro_wrapper]]` on wrapper functions | Optimized coroutine with elision hints (Clang only) |
 
 ### Key Differences

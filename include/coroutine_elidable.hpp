@@ -118,6 +118,7 @@ task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
   co_return val1 + val2;
 }
 
+[[clang::coro_wrapper]]
 task<int> async_chain(int x) { return async_chain(async_compute(x)); }
 
 task<int> async_complex_chain_inner(
@@ -128,6 +129,7 @@ task<int> async_complex_chain_inner(
   co_return v1 + v2 + v3;
 }
 
+[[clang::coro_wrapper]]
 task<int> async_complex_chain(int x) {
   return async_complex_chain_inner(async_compute(x));
 }
