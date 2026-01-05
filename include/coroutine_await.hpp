@@ -1,11 +1,12 @@
 #pragma once
 
+#include <attributes.hpp>
 #include <coroutine>
 
 namespace async_coro_await {
 
 // Awaitable task that can be co_awaited
-template <typename T> class [[clang::coro_await_elidable]] task {
+template <typename T> class CORO_AWAIT_ELIDABLE task {
 public:
   struct promise_type {
     T value;

@@ -1,12 +1,13 @@
 #pragma once
 
+#include <attributes.hpp>
 #include <coroutine>
 #include <optional>
 #include <stdexcept>
 
 namespace async_coro {
 
-template <typename T> class [[clang::coro_await_elidable]] task {
+template <typename T> class CORO_AWAIT_ELIDABLE task {
 public:
   struct promise_type {
     std::optional<T> value;
