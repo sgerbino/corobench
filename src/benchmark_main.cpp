@@ -1,19 +1,14 @@
-#include "callback_async.hpp"
-#include "coroutine_async.hpp"
 #include <benchmark/benchmark.h>
+#include <callback_async.hpp>
+#include <coroutine_async.hpp>
+#include <coroutine_await.hpp>
+#include <coroutine_optimized.hpp>
 
-// Benchmark simple coroutine computation
-static void BM_Coroutine_Simple(benchmark::State &state) {
-  for (auto _ : state) {
-    auto task = async_coro::async_compute(1000);
-    int result = task.get();
-    benchmark::DoNotOptimize(result);
-  }
-}
-BENCHMARK(BM_Coroutine_Simple);
+// ============================================================================
+// SIMPLE OPERATIONS - Single async computation (workload=1000)
+// ============================================================================
 
-// Benchmark simple callback computation
-static void BM_Callback_Simple(benchmark::State &state) {
+static void BM_Simple_Callback(benchmark::State &state) {
   for (auto _ : state) {
     int result = 0;
     async_callback::async_compute<int>(1000,
@@ -21,20 +16,40 @@ static void BM_Callback_Simple(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Callback_Simple);
+BENCHMARK(BM_Simple_Callback);
 
-// Benchmark chained coroutines
-static void BM_Coroutine_Chain(benchmark::State &state) {
+static void BM_Simple_Coroutine(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro::async_chain(1000);
+    auto task = async_coro::async_compute(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Coroutine_Chain);
+BENCHMARK(BM_Simple_Coroutine);
 
-// Benchmark chained callbacks
-static void BM_Callback_Chain(benchmark::State &state) {
+static void BM_Simple_CoroOptimized(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_opt::async_compute(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Simple_CoroOptimized);
+
+static void BM_Simple_CoroAwait(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_await::async_compute(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Simple_CoroAwait);
+
+// ============================================================================
+// TWO-LEVEL CHAINS - Chaining two async operations
+// ============================================================================
+
+static void BM_Chain_Callback(benchmark::State &state) {
   for (auto _ : state) {
     int result = 0;
     async_callback::async_chain<int>(1000,
@@ -42,20 +57,40 @@ static void BM_Callback_Chain(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Callback_Chain);
+BENCHMARK(BM_Chain_Callback);
 
-// Benchmark complex chained coroutines
-static void BM_Coroutine_ComplexChain(benchmark::State &state) {
+static void BM_Chain_Coroutine(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro::async_complex_chain(1000);
+    auto task = async_coro::async_chain(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Coroutine_ComplexChain);
+BENCHMARK(BM_Chain_Coroutine);
 
-// Benchmark complex chained callbacks
-static void BM_Callback_ComplexChain(benchmark::State &state) {
+static void BM_Chain_CoroOptimized(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_opt::async_chain(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Chain_CoroOptimized);
+
+static void BM_Chain_CoroAwait(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_await::async_chain(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_Chain_CoroAwait);
+
+// ============================================================================
+// THREE-LEVEL COMPLEX CHAINS - Testing callback pyramid vs coroutines
+// ============================================================================
+
+static void BM_ComplexChain_Callback(benchmark::State &state) {
   for (auto _ : state) {
     int result = 0;
     async_callback::async_complex_chain<int>(
@@ -63,21 +98,40 @@ static void BM_Callback_ComplexChain(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Callback_ComplexChain);
+BENCHMARK(BM_ComplexChain_Callback);
 
-// Benchmark coroutines with varying workloads
-static void BM_Coroutine_VaryingLoad(benchmark::State &state) {
-  int workload = state.range(0);
+static void BM_ComplexChain_Coroutine(benchmark::State &state) {
   for (auto _ : state) {
-    auto task = async_coro::async_compute(workload);
+    auto task = async_coro::async_complex_chain(1000);
     int result = task.get();
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Coroutine_VaryingLoad)->Range(8, 8 << 10);
+BENCHMARK(BM_ComplexChain_Coroutine);
 
-// Benchmark callbacks with varying workloads
-static void BM_Callback_VaryingLoad(benchmark::State &state) {
+static void BM_ComplexChain_CoroOptimized(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_opt::async_complex_chain(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_ComplexChain_CoroOptimized);
+
+static void BM_ComplexChain_CoroAwait(benchmark::State &state) {
+  for (auto _ : state) {
+    auto task = async_coro_await::async_complex_chain(1000);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_ComplexChain_CoroAwait);
+
+// ============================================================================
+// VARYING WORKLOADS - Performance scaling (8 to 8192 iterations)
+// ============================================================================
+
+static void BM_VaryingLoad_Callback(benchmark::State &state) {
   int workload = state.range(0);
   for (auto _ : state) {
     int result = 0;
@@ -86,6 +140,36 @@ static void BM_Callback_VaryingLoad(benchmark::State &state) {
     benchmark::DoNotOptimize(result);
   }
 }
-BENCHMARK(BM_Callback_VaryingLoad)->Range(8, 8 << 10);
+BENCHMARK(BM_VaryingLoad_Callback)->Range(8, 8 << 10);
+
+static void BM_VaryingLoad_Coroutine(benchmark::State &state) {
+  int workload = state.range(0);
+  for (auto _ : state) {
+    auto task = async_coro::async_compute(workload);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_VaryingLoad_Coroutine)->Range(8, 8 << 10);
+
+static void BM_VaryingLoad_CoroOptimized(benchmark::State &state) {
+  int workload = state.range(0);
+  for (auto _ : state) {
+    auto task = async_coro_opt::async_compute(workload);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_VaryingLoad_CoroOptimized)->Range(8, 8 << 10);
+
+static void BM_VaryingLoad_CoroAwait(benchmark::State &state) {
+  int workload = state.range(0);
+  for (auto _ : state) {
+    auto task = async_coro_await::async_compute(workload);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_VaryingLoad_CoroAwait)->Range(8, 8 << 10);
 
 BENCHMARK_MAIN();

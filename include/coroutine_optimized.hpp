@@ -1,30 +1,32 @@
 #pragma once
 
 #include <coroutine>
-#include <optional>
-#include <stdexcept>
 
-namespace async_coro {
+namespace async_coro_opt {
 
+// Optimized Task with minimal overhead
 template <typename T> class [[clang::coro_await_elidable]] task {
 public:
   struct promise_type {
-    std::optional<T> value;
-    std::exception_ptr exception;
+    T value;
 
     task get_return_object() {
       return task{std::coroutine_handle<promise_type>::from_promise(*this)};
     }
 
-    std::suspend_never initial_suspend() { return {}; }
+    // Eager execution - no suspension at start
+    std::suspend_never initial_suspend() noexcept { return {}; }
+
+    // Suspend at end to preserve value
     std::suspend_always final_suspend() noexcept { return {}; }
 
-    void return_value(T val) { value = std::move(val); }
+    void return_value(T val) noexcept { value = val; }
 
-    void unhandled_exception() { exception = std::current_exception(); }
+    // No exception handling for performance
+    void unhandled_exception() noexcept {}
   };
 
-  explicit task(std::coroutine_handle<promise_type> h) : handle(h) {}
+  explicit task(std::coroutine_handle<promise_type> h) noexcept : handle(h) {}
 
   task(task &&other) noexcept : handle(other.handle) { other.handle = nullptr; }
 
@@ -48,37 +50,20 @@ public:
   task(const task &) = delete;
   task &operator=(const task &) = delete;
 
-  T get() {
-    if (!handle) {
-      throw std::runtime_error("Invalid coroutine handle");
-    }
+  // Simplified get - no error checking for performance
+  T get() noexcept { return handle.promise().value; }
 
-    auto &promise = handle.promise();
-    if (promise.exception) {
-      std::rethrow_exception(promise.exception);
-    }
-
-    if (!promise.value) {
-      throw std::runtime_error("No value available");
-    }
-
-    return *promise.value;
-  }
-
-  bool done() const { return handle && handle.done(); }
+  bool done() const noexcept { return handle && handle.done(); }
 
 private:
   std::coroutine_handle<promise_type> handle;
 };
 
-// Simple async computation examples
-// Use volatile to prevent optimization and make computation depend on actual
-// work
+// Simple async computation
 task<int> async_compute(int x) {
   volatile int result = 0;
-  // Perform actual computation that can't be constant-folded
   for (int i = 0; i < x; i = i + 1) {
-    volatile int temp = i * 31 + (i & 1); // Non-trivial computation
+    volatile int temp = i * 31 + (i & 1);
     result += temp;
   }
   co_return static_cast<int>(result);
@@ -107,4 +92,4 @@ task<int> async_complex_chain(int x) {
   co_return v1 + v2 + v3;
 }
 
-} // namespace async_coro
+} // namespace async_coro_opt
