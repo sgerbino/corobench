@@ -1,12 +1,12 @@
 #pragma once
 
-#include <attributes.hpp>
+#include "attributes.hpp"
 #include <coroutine>
 
 namespace async_coro_elidable {
 
-// Task with elidable await optimization
-template <typename T> class task {
+// Task class decorated with coro_await_elidable
+template <typename T> class CORO_AWAIT_ELIDABLE task {
 public:
   struct promise_type {
     T value;
@@ -49,8 +49,8 @@ public:
 
   T get() noexcept { return handle.promise().value; }
 
-  // Awaiter with elidable optimization
-  struct CORO_AWAIT_ELIDABLE Awaiter {
+  // Simple awaiter (attribute is on the Task class itself)
+  struct Awaiter {
     std::coroutine_handle<promise_type> handle;
 
     bool await_ready() const noexcept { return handle.done(); }
@@ -76,7 +76,7 @@ task<int> async_compute(int x) {
   co_return static_cast<int>(result);
 }
 
-// Chain using co_await with elidable argument attribute
+// Chain using co_await with elidable Task class and elidable argument
 task<int> async_chain(CORO_AWAIT_ELIDABLE_ARGUMENT task<int> task1) {
   int val1 = co_await task1;
   int val2 = co_await async_compute(val1 % 100);
