@@ -212,6 +212,16 @@ static void BM_VaryingLoad_CoroElidable(benchmark::State &state) {
   }
 }
 BENCHMARK(BM_VaryingLoad_CoroElidable)->Range(8, 8 << 10);
+
+static void BM_VaryingLoad_CoroElidableTask(benchmark::State &state) {
+  int workload = state.range(0);
+  for (auto _ : state) {
+    auto task = async_coro_elidable_task::async_compute(workload);
+    int result = task.get();
+    benchmark::DoNotOptimize(result);
+  }
+}
+BENCHMARK(BM_VaryingLoad_CoroElidableTask)->Range(8, 8 << 10);
 #endif
 
 BENCHMARK_MAIN();
