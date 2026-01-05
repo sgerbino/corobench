@@ -83,7 +83,7 @@ All coroutine implementations use `co_await` for proper async composition in cha
 | **Coroutine** | Full safety (exception + optional) | `co_await` | None | Production code needing safety |
 | **CoroOptimized** | Minimal (direct value) | `co_await` | None | Performance-critical code |
 | **CoroElidable** | Full safety (exception + optional) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters | Standard coroutine with elision hints (Clang only) |
-| **CoroOptElidable** | Minimal (direct value) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters | Optimized coroutine with elision hints (Clang only) |
+| **CoroOptElidable** | Minimal (direct value) | `co_await` | `[[coro_await_elidable]]` on task class, `[[coro_await_elidable_argument]]` on parameters, `[[coro_wrapper]]` on wrapper functions | Optimized coroutine with elision hints (Clang only) |
 
 ### Key Differences
 
@@ -145,6 +145,26 @@ task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
   co_return val1 + val2;
 }
 
+task<int> async_chain(int x) { return async_chain(async_compute(x)); }
+```
+
+### `[[clang::coro_wrapper]]`
+
+This is a **function attribute** applied to non-coroutine wrapper functions that immediately return the result of calling a coroutine. It helps the compiler optimize the return address handling and potentially inline or elide the wrapper function entirely.
+
+This attribute works synergistically with `coro_await_elidable` and `coro_await_elidable_argument` to maximize optimization potential in call chains.
+
+Example from `coroutine_optimized_elidable.hpp`:
+```cpp
+// The actual coroutine that performs the work
+task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
+  int val1 = co_await task1;
+  int val2 = co_await async_compute(val1 % 100);
+  co_return val1 + val2;
+}
+
+// Non-coroutine wrapper for convenience - marked with coro_wrapper
+[[clang::coro_wrapper]]
 task<int> async_chain(int x) { return async_chain(async_compute(x)); }
 ```
 
