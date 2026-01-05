@@ -61,7 +61,9 @@ public:
 
     bool await_ready() const noexcept { return handle.done(); }
 
-    void await_suspend(std::coroutine_handle<>) noexcept {}
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<>) noexcept {
+      return handle; // Symmetric transfer - no stack growth
+    }
 
     T await_resume() noexcept { return handle.promise().value; }
   };

@@ -54,7 +54,9 @@ public:
 
     bool await_ready() const noexcept { return handle.done(); }
 
-    void await_suspend(std::coroutine_handle<>) noexcept {}
+    std::coroutine_handle<> await_suspend(std::coroutine_handle<>) noexcept {
+      return handle; // Symmetric transfer - no stack growth
+    }
 
     T await_resume() noexcept { return handle.promise().value; }
   };
@@ -83,6 +85,7 @@ task<int> async_chain([[clang::coro_await_elidable_argument]] task<int> task1) {
 }
 
 // Helper for the standard interface
+[[clang::coro_wrapper]]
 task<int> async_chain(int x) { return async_chain(async_compute(x)); }
 
 // Complex chain with elidable arguments
@@ -95,6 +98,7 @@ task<int> async_complex_chain_inner(
 }
 
 // Helper for the standard interface
+[[clang::coro_wrapper]]
 task<int> async_complex_chain(int x) {
   return async_complex_chain_inner(async_compute(x));
 }
